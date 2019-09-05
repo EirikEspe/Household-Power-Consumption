@@ -178,12 +178,12 @@ sum(sub_meters$Unspecified_consumption, na.rm = TRUE)
 
 
 # Total power consumption measured by sub meters in percentage
-sum(colSums(sub_meters[,1:3], na.rm = TRUE)) / sum(colSums(sub_meters, na.rm = TRUE))
+sum(colSums(sub_meters[,1:3], na.rm = TRUE)) / sum(sub_meters, na.rm = TRUE)
 # The sub meters captures 48.8% of the household's power consumption
 
 
 # Power consumption measured by each sub meter in percentage
-colSums(sub_meters[,1:3], na.rm = TRUE) / sum(colSums(sub_meters, na.rm = TRUE))
+colSums(sub_meters[,1:3], na.rm = TRUE) / sum(sub_meters, na.rm = TRUE)
 # Sub meter 1: 6.2%         
 # Sub meter 2: 7.1%        
 # Sub meter 3: 35.5%                                             
