@@ -528,18 +528,19 @@ ggplot(Jan10th) + geom_line(aes(x = Hour, y = Sum_water_ac, colour = "2010")) +
 # The plots show a higher baseline consumption in 2010 than in 2008.
 # Maybe an extra appliance was added to the submeter
 
-  
-# Week 2, January 2008
+
+# See if this is consistent through the whole week
+## Week 2, January 2008
 powconsumption %>%
   filter(Year == 2008 & Week == 2) %>%
-  group_by(Hour) %>% 
+  group_by(Hour, Weekday) %>% 
   summarise(Sum_kitchen = sum(Sub_metering_1, na.rm = TRUE),
             Sum_laundryroom = sum(Sub_metering_2, na.rm = TRUE),
             Sum_water_ac = sum(Sub_metering_3, na.rm = TRUE)) %>%
   ungroup() -> Week_jan2008
   
 
-# Week 2, January 2010
+## Week 2, January 2010
 powconsumption %>%
   filter(Year == 2010 & Week == 2) %>%
   group_by(Hour, Weekday) %>% 
@@ -548,14 +549,18 @@ powconsumption %>%
             Sum_water_ac = sum(Sub_metering_3, na.rm = TRUE)) %>%
   ungroup() -> Week_jan2010
 
+## Combine the submeter 3 data from 2008 to the data frame for Week 2 in 2010
 Week2jan <- cbind(Week_jan2010, Week_jan2008$Sum_water_ac)
+
 
 ## Plot with ggplot
 ggplot(Week2jan) + geom_line(aes(x = Hour, y = Sum_water_ac, colour = "2010")) +
   geom_line(aes(x = Hour, y = Week_jan2008$Sum_water_ac, colour = "2008")) +
   labs(title = "Submeter 3 consumption January, week 2", y = "Watt/Hours") +
-  guides(colour = guide_legend(title = "Year"))
-# Currently not working
+  guides(colour = guide_legend(title = "Year")) +
+  facet_wrap(~Weekday)
 
+# Except from Wednesday and Thursday, where the 2010 consumption is almost 0,
+# we can see that the baseline consumption in 2010 is higher.
 
 
