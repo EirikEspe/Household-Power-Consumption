@@ -95,6 +95,30 @@ sum(chart_df$Unspecified_consumption, na.rm = TRUE) / sum(chart_df$`Active power
 
 
 
+
+
+# Comparing the households energy consumption with the average French household
+
+# According to the artice:
+# http://shrinkthatfootprint.com/average-household-electricity-consumption
+# the average French household consumed 6343 kWh/year
+
+
+# Total consumption for the French household in 2009 
+sum(powconsumption$Global_active_power[powconsumption$Year == 2009], na.rm = TRUE)    
+# The Active Power variable is quoted as minute-averaged active power 
+
+
+
+# Active power converted to kWh per year
+sum(powconsumption$Global_active_power[powconsumption$Year == 2009], na.rm = TRUE)/60
+# The household consumed 9372 kWh/year. That is 47% more than the average
+# French household
+
+
+
+
+
 # Looking at week with highest observed Active power consumption
 
 submeter_wkd2009_usage_ar %>% 
@@ -149,4 +173,65 @@ ggplot(aes(x = Hour, y = readings,
 
 
 
+
+#--- Visualizations of power consumption ----
+
+
+#---Weekday consumption ----
+
+#Submeter consumption per weekday
+powconsumption %>% 
+  group_by(Weekday) %>% # Summarising per weekday
+  summarise(Kitchen = sum(Sub_metering_1, na.rm = TRUE),
+            Laundry = sum(Sub_metering_2, na.rm = TRUE),
+            Water_heater = sum(Sub_metering_3, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  # Create a dataset where submeters are in same column
+  melt(id.vars = c("Weekday"),
+       variable.name = "meter_reading", 
+       value.name = "readings") %>% 
+  #Plot
+  ggplot() + geom_col(aes(x = Weekday, y = readings, 
+                          group = meter_reading, fill = meter_reading), 
+                      position = "dodge") + 
+  labs(title = "Submeter measurements per weekday", x ="", y = "Watt/Hour") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_y_continuous(labels = comma) + 
+  scale_fill_manual(name = "Submeter", 
+                    labels = c("Kitchen", "Laundry Room", 
+                               "Water heater & AC"), 
+                    values = c("cyan4", "darkkhaki", "lightsteelblue3")) +
+  facet_grid(~ meter_reading)
+
+
+
+#--- Hour consumption ----
+
+#Submeter consumption per Hour
+powconsumption %>% 
+  group_by(Hour, Quarter) %>% # Summarising per weekday
+  summarise(Kitchen = sum(Sub_metering_1, na.rm = TRUE),
+            Laundry = sum(Sub_metering_2, na.rm = TRUE),
+            Water_heater = sum(Sub_metering_3, na.rm = TRUE)) %>% 
+  #Unspecified = sum(Global_active_power*1000/60 - (Sub_metering_1 + 
+  #                    Sub_metering_2 + 
+  #                    Sub_metering_3), na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  # Create a dataset where submeters are in same column
+  melt(id.vars = c("Hour", "Quarter"),
+       variable.name = "meter_reading", 
+       value.name = "readings") %>% 
+  #Plot
+  ggplot() + geom_col(aes(x = Hour, y = readings, 
+                          group = meter_reading, fill = meter_reading), 
+                      position = "dodge") + 
+  labs(title = "Submeter measurements per time of day", 
+       x = "Hour", y = "Watt/Hour") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_y_continuous(labels = comma) + 
+  scale_fill_manual(name = "Submeter", 
+                    labels = c("Kitchen", "Laundry Room", 
+                               "Water heater & AC", "Unspecified"), 
+                    values = c("cyan4", "darkkhaki", "lightsteelblue3")) + 
+  facet_grid(~ meter_reading)
 

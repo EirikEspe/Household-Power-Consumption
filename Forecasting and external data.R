@@ -7,10 +7,52 @@
 #Created by Eirik Espe
 ################################################################
 
-source("Visualize and Analyze Energy Data.R")
+source("Initial Exploration part 2.R")
 
 library(scales)
 library(zoo)
+
+
+# Before we start creating time series objects, we should handle 
+# missing values
+
+
+
+# Missing data analysis
+
+# Take a look at the periods with missing data
+powconsumption[which(is.na(powconsumption$Global_active_power)), "DateTime"]
+
+# Power consumption after the period of missing values September 28th, 2010
+powconsumption %>% 
+  filter(Year == 2010 & Month == 9 & Day == 28 & Hour == 19 & 
+           between(Minute, 8, 20))
+
+# And the consumption the following two days
+powconsumption %>% 
+  filter(Year == 2007 & Month == 4 & between(Day, 28, 30))
+
+
+
+# Data frame with date, hour and minute for the missing values
+NAsTime <- powconsumption %>% 
+  filter(is.na(Global_active_power)) %>%  
+  select(DateTime, Hour, Minute, Global_active_power)
+
+
+# Plot with Missing values for different time of the day
+ggplot(NAsTime) + geom_bar(aes(x = Hour)) + 
+  labs(title = "Time point of missing values") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_grid(~year(DateTime))
+
+
+#Missing values per weekday
+ggplot(NAsTime) + geom_bar(aes(x = Hour)) +
+  labs(title = "Time point of missing values") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_grid(year(DateTime)~wday(DateTime, label = TRUE, week_start = 1))
+
 
 
 # I was first considering converting the data to time series and then 
@@ -82,7 +124,12 @@ library(zoo)
 #}
 
 
+
+
+
+
 #--- Handling missing values ----
+
 #Subset variables with missing values
 na_var <- mutate(powconsumption, 
                  Active_power = Global_active_power, 
@@ -265,30 +312,30 @@ autoplot(tsHW07_09mod5for, conf.int = TRUE) +
 # Function for HW plot for using ggplot2
 
 
-HWplot <- function(ts_object, n.ahead=4, CI=.95, 
-                 error.ribbon='green', line.size=1){
+HWplot <- function(ts_object, n.ahead = 4, CI = .95, 
+                 error.ribbon = 'green', line.size = 1){
   
   hw_object <- HoltWinters(ts_object)
   
   forecast <- predict(hw_object, n.ahead = n.ahead, 
-                      prediction.interval=T, level=CI)
+                      prediction.interval = T, level = CI)
   
   
-  for_values <- data.frame(time=round(time(forecast), 3), 
-                           value_forecast=as.data.frame(forecast)$fit, 
-                           dev=as.data.frame(forecast)$upr-
+  for_values <- data.frame(time = round(time(forecast), 3), 
+                           value_forecast = as.data.frame(forecast)$fit, 
+                           dev = as.data.frame(forecast)$upr-
                              as.data.frame(forecast)$fit)
   
-  fitted_values <- data.frame(time=round(time(hw_object$fitted), 3), 
+  fitted_values <- data.frame(time = round(time(hw_object$fitted), 3), 
                               value_fitted = 
                                 as.data.frame(hw_object$fitted)$xhat)
   
   actual_values <- data.frame(time = round(time(hw_object$x), 3), 
-                              Actual=c(hw_object$x))
+                              Actual = c(hw_object$x))
   
   
   graphset <- merge(actual_values, fitted_values, by = 'time', all = TRUE)
-  graphset <- merge(graphset, for_values, all=TRUE, by = 'time')
+  graphset <- merge(graphset, for_values, all = TRUE, by = 'time')
   graphset[is.na(graphset$dev), ]$dev <- 0
   
   graphset$Fitted <- c(rep(NA, NROW(graphset)-(NROW(for_values) + 
@@ -296,16 +343,16 @@ HWplot <- function(ts_object, n.ahead=4, CI=.95,
                        fitted_values$value_fitted, for_values$value_forecast)
   
   
-  graphset.melt<-melt(graphset[, c('time', 'Actual', 'Fitted')], id='time')
+  graphset.melt <- melt(graphset[, c('time', 'Actual', 'Fitted')], id = 'time')
   
   p <- ggplot(graphset.melt, aes(x = time, y = value)) + 
-    geom_ribbon(data=graphset, aes(x = time, y = Fitted, 
+    geom_ribbon(data = graphset, aes(x = time, y = Fitted, 
                                    ymin = Fitted-dev, ymax = Fitted + dev), 
-                alpha=.2, fill=error.ribbon) + 
-    geom_line(aes(colour=variable), size=line.size) + 
-    geom_vline(x=max(actual_values$time), lty=2) + 
+                alpha = .2, fill = error.ribbon) + 
+    geom_line(aes(colour = variable), size = line.size) + 
+    geom_vline(x = max(actual_values$time), lty = 2) + 
     xlab('Time') + ylab('Value') + 
-    opts(legend.position='bottom') + 
+    opts(legend.position = 'bottom') + 
     scale_colour_hue('')
   
   result.list <- list(plot = p, forecast = for_values, 
@@ -333,8 +380,9 @@ HWplot(ts07_09weekly_Active, n.ahead = 52)
 
 
 #--- Temperature ----
-# Creating temperature dataset based on data from 
+# Creating temperature dataset based on data from
 # https://www.worldweatheronline.com/paris-weather-averages/ile-de-france/fr.aspx
+# using data from 2009.
 
 temperature <- setNames(data.frame(matrix(ncol = 4, nrow = 12)), 
                         c("month", "avg_temp", "min_temp", "max_temp"))
@@ -344,12 +392,14 @@ temperature$month <- month(seq(as.Date("2009/1/1"), by = "month",
                               length.out = 12), 
                           label = TRUE, abbr = FALSE)
 
+
 #Add average temperature for 2009
 temperature$avg_temp <- c(0, 3, 7, 12, 14, 16, 19, 20, 16, 12, 9, 3)
                            
 
 #Min temperatures
 temperature$min_temp <- c(-2, 0, 3, 8, 9, 11, 14, 14, 12, 8, 7, 1)
+
 
 #Max temperature
 temperature$max_temp <- rep(c(3, 7, 11, 17, 19, 21, 24, 25, 21, 16, 12, 6), 1)
@@ -381,118 +431,33 @@ ggplot(energy_temp, aes(x = Month)) +
   scale_colour_manual(values = c("brown", "deepskyblue3"), name = "Parameter")
 
 
-# Total consumption in 2009 
-colSums(energy_temp)
 
-# Active power converted to kWh per year
-sum(energy_temp$SumActive)/60
-
-
-# Missing data analysis
-# Resilience - capacity to quickly recover after a power outage
-
-# Take a look at the period with missing data
-powconsumption[which(is.na(powconsumption$Global_active_power)), "DateTime"]
-
-# Power consumption after the power outage September 28th, 2010
-powconsumption %>% 
-  filter(Year == 2010 & Month == 9 & Day == 28 & Hour == 19 & 
-           between(Minute, 8, 20))
-
-powconsumption %>% 
-  filter(Year == 2007 & Month == 4 & between(Day, 28, 30))
-
-NAsTime <- powconsumption %>% 
-  filter(is.na(Global_active_power)) %>%  
-  select(DateTime, Hour, Minute, Global_active_power)
-
-# Missing values for different time of the day
-ggplot(NAsTime) + geom_bar(aes(x = Hour)) + 
-  labs(title = "Time point of missing values") + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  facet_grid(~year(DateTime))
-
-#Missing values per weekday
-ggplot(NAsTime) + geom_bar(aes(x = Hour)) +
-  labs(title = "Time point of missing values") + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  facet_grid(year(DateTime)~wday(DateTime, label = TRUE, week_start = 1))
-
-#---Weekday consumption ----
-
-#Submeter consumption per weekday
-powconsumption %>% 
-  group_by(Weekday) %>% # Summarising per weekday
-  summarise(Kitchen = sum(Sub_metering_1, na.rm = TRUE),
-         Laundry = sum(Sub_metering_2, na.rm = TRUE),
-         Water_heater = sum(Sub_metering_3, na.rm = TRUE)) %>% 
-  ungroup() %>% 
-  # Create a dataset where submeters are in same column
-  melt(id.vars = c("Weekday"),
-       variable.name = "meter_reading", 
-       value.name = "readings") %>% 
-  #Plot
-  ggplot() + geom_col(aes(x = Weekday, y = readings, 
-                          group = meter_reading, fill = meter_reading), 
-                      position = "dodge") + 
-  labs(title = "Submeter measurements per weekday", x ="", y = "Watt/Hour") + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_y_continuous(labels = comma) + 
-  scale_fill_manual(name = "Submeter", 
-                      labels = c("Kitchen", "Laundry Room", 
-                                 "Water heater & AC"), 
-                      values = c("cyan4", "darkkhaki", "lightsteelblue3")) #+
-  #facet_grid(~ meter_reading)
-
-#--- Hour consumption ----
-
-#Submeter consumption per Hour
-powconsumption %>% 
-  group_by(Hour, Quarter) %>% # Summarising per weekday
-  summarise(Kitchen = sum(Sub_metering_1, na.rm = TRUE),
-            Laundry = sum(Sub_metering_2, na.rm = TRUE),
-            Water_heater = sum(Sub_metering_3, na.rm = TRUE)) %>% 
-            #Unspecified = sum(Global_active_power*1000/60 - (Sub_metering_1 + 
-            #                    Sub_metering_2 + 
-            #                    Sub_metering_3), na.rm = TRUE)) %>% 
-  ungroup() %>% 
-  # Create a dataset where submeters are in same column
-  melt(id.vars = c("Hour", "Quarter"),
-       variable.name = "meter_reading", 
-       value.name = "readings") %>% 
-  #Plot
-  ggplot() + geom_col(aes(x = Hour, y = readings, 
-                          group = meter_reading, fill = meter_reading), 
-                      position = "dodge") + 
-  labs(title = "Submeter measurements per time of day", 
-       x = "Hour", y = "Watt/Hour") + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_y_continuous(labels = comma) + 
-  scale_fill_manual(name = "Submeter", 
-                    labels = c("Kitchen", "Laundry Room", 
-                               "Water heater & AC", "Unspecified"), 
-                    values = c("cyan4", "darkkhaki", "lightsteelblue3")) + 
-  facet_grid(meter_reading ~ Quarter)
 
 
 #--- Pricing ----
 
 # Loading dataset with examples of prices
-Prices <- read.csv2("~/Documents/Data analytics/Ubiqum/Project 3/Visualize and Analyze Energy Data/Prices_day_2007.csv")
+# The prices are collected from: 
+# https://www.epexspot.com/en/market-data/dayaheadauction/auction-table/2007-09-30/FR
+# Monday 24 September 2007
+Prices <- read.csv2("~/Data/Prices_day_2007.csv")
 
-# Creating a price chart
+
+# Creating data frame of sum energy consumption for September 24th 2007
 price_chart <- imputed_var %>% 
   filter(Year == 2007 & Month == 9 & Day == 24) %>%  
-  select(Hour, Submeter1:Unspecified_consumption) %>%
+  select(Hour, Submeter1:Submeter3) %>%
   group_by(Hour) %>% 
   summarise(sumS1 = sum(Submeter1),
             sumS2 = sum(Submeter2),
-            sumS3 = sum(Submeter3),
-            sumUnspecified = sum(Unspecified_consumption)) %>%
+            sumS3 = sum(Submeter3)) %>%
   ungroup()
 
+# Combine the data frame with the prices
 price_chart <- cbind(price_chart, Prices)
 
+
+# Plot the data
 ggplot(price_chart, aes(x = Hour)) + 
   geom_line(aes(y = sumS1, colour = "Kitchen"), group = 1) +
   geom_line(aes(y = sumS2, colour = "Laundry Room"), group = 1) +
@@ -502,6 +467,9 @@ ggplot(price_chart, aes(x = Hour)) +
        y = "Watt/Hour") + 
   scale_y_continuous(sec.axis = sec_axis(~./15, name = "Price (€ /MWh)")) +
   guides(colour = guide_legend(title = "Parameter"))
+
+
+
 
 
 
