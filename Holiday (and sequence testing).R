@@ -35,9 +35,11 @@ Daily_imputed[which.min(Daily_imputed$sumActive),]
 
 
 #Graph the day
+
+## Creating label for the panels in facet_grid()
 label <- factor(c("Submeter 1", "Submeter 2", "Submeter 3", "Unspecified"))
 
-
+## Specyfying which day in the data frame
 imputed_var %>% 
   filter(Year == 2008 & Week == 34 & Day == 25 &
            (Minute = 0 | Minute == 10 | Minute == 20 | Minute == 30 | 
@@ -45,11 +47,11 @@ imputed_var %>%
   select(DateTime, Weekday, Hour, 
          Submeter1:Unspecified_consumption) %>% 
   
-  
+## Covert data to long format  
   melt(id.vars = c("DateTime", "Weekday", "Hour"),
        variable.name = "meter_reading", 
        value.name = "readings") %>% 
-  
+# Plot
   ggplot() + geom_col(aes(x = Hour, y = readings, 
                            fill = meter_reading)) +
   scale_fill_manual(name = "Submeter", 
@@ -63,9 +65,7 @@ imputed_var %>%
 
 
 
-# Create a data frame summed by week to look for holiday
-
-# Graphing to look for electricity consumption during holiday
+## Create a data frame summed by week to look for high or low consumption
 Weekly_imputed <- imputed_var %>%
   group_by(Year, Month, Week) %>% 
   summarise(sumActive = sum(Active_power),
@@ -79,11 +79,12 @@ Weekly_imputed <- imputed_var %>%
 
 ## Looking at week with lowest power consumption
 Weekly_imputed[which.min(Weekly_imputed$sumActive),]
+# Week 18 in 2007
 
 
-# Graph
+## Specify which week we want to graph and aggregate data for this period
 imputed_var %>% 
-  filter(Year == 2008 & between(Week, 14, 15)) %>%
+  filter(Year == 2007 & between(Week, 18, 19)) %>%
   group_by(Date) %>% 
   summarise(sumS1 = sum(Submeter1),
             sumS2 = sum(Submeter2),
@@ -91,7 +92,7 @@ imputed_var %>%
             sumUnspecified = sum(Unspecified_consumption)) %>% 
   ungroup() %>% 
   
-  
+## Convert data to long format  
   melt(id.vars = c("Date"),
        variable.name = "meter_reading", 
        value.name = "readings") %>% 
@@ -100,17 +101,24 @@ imputed_var %>%
                            colour = meter_reading)) +
   scale_x_date(name = "", labels = date_format("%b %d"), breaks = "day") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "Power consumption week 14 and 15, 2008 ", y = "Watt/Hour") + 
+  labs(title = "Power consumption week 18 and 19, 2007 ", y = "Watt/Hour") + 
   scale_colour_discrete(name = "Submeter", 
                        label = c("Kitchen", "Laundry Room", 
                                  "Water heater & AC", "Unspecified"))
 # facet_grid(~label[meter_reading])
+
+## We can se that the right half of the graph has higher consumption than the left half.
 
 
 
 
 
 #--- Sequence testing ----
+
+## From our current experimentation we have seen that submeter 1 (the submeter 
+## in the kitchen) is the only submeter that can have a longer period of 
+## zero energy consumption. This room do not have a constant baseline consumption.
+## We can use this submeter to find out whether the household are on a holiday.
 
 
 # Finding sequences when the submeter in the kitchen equals 0 (Sumeter 1 = 0)
@@ -184,5 +192,7 @@ imputed_var %>%
                                   "Water heater & AC", "Unspecified"))
 
 
-
+## We can see the sharp power consumption decrease from the day before the holiday,
+## as well as the sharp increase of power consumption when the household comes back
+## from the holiday
 
